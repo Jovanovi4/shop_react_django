@@ -1,0 +1,61 @@
+<!-- shop/templates/shop/bag_detail.html -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ bag.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 1000px; margin: auto; padding: 20px; }
+        .gallery { display: flex; gap: 20px; }
+        .gallery img { max-width: 100%; border-radius: 8px; }
+        .thumbnails { display: flex; gap: 10px; margin-top: 10px; }
+        .thumbnails img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px; }
+        .info { margin-top: 20px; }
+        .info h1 { margin-bottom: 10px; }
+        .info p { margin: 5px 0; }
+        .back-link { margin-top: 20px; display: inline-block; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'bag-list' %}" class="back-link">← Назад к списку</a>
+
+        <div class="gallery">
+            <div style="flex: 1;">
+                {% if bag.main_image %}
+                    <img src="{{ bag.main_image.url }}" alt="{{ bag.name }}">
+                {% endif %}
+                <div class="thumbnails">
+                    {% for image in bag.bagimage_set.all %}
+                        <img src="{{ image.image.url }}" alt="Доп. фото">
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="info" style="flex: 1;">
+                <h1>{{ bag.name }}</h1>
+                <p><strong>Артикул:</strong> {{ bag.article }}</p>
+                <p><strong>Бренд:</strong> {{ bag.brand.name }}</p>
+                <p><strong>Цена:</strong> {{ bag.price }} ₽</p>
+                {% if bag.sale_price %}
+                    <p><strong>Цена со скидкой:</strong> {{ bag.sale_price }} ₽</p>
+                {% endif %}
+                <p><strong>Материал:</strong> {{ bag.material.name }}</p>
+                <p><strong>Тип:</strong> {{ bag.bag_type.name }}</p>
+                <p><strong>Цвет:</strong> {{ bag.color.name }}</p>
+                <p><strong>Размер:</strong> {{ bag.size.name }}</p>
+
+                <h3>Описание</h3>
+                <p>{{ bag.description }}</p>
+
+                {% if bag.characteristics %}
+                    <h3>Характеристики</h3>
+                    <p>{{ bag.characteristics }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

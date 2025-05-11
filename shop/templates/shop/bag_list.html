@@ -1,0 +1,52 @@
+<!-- shop/templates/shop/bag_list.html -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сумки</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: auto; padding: 20px; }
+        .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            width: calc(25% - 20px);
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .card img {
+            max-height: 200px;
+            object-fit: cover;
+            width: 100%;
+            border-radius: 4px;
+        }
+        .card h3 { margin: 10px 0 5px; font-size: 18px; }
+        .card p { margin: 5px 0; font-size: 14px; color: #555; }
+        a { text-decoration: none; color: inherit; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Каталог сумок</h1>
+        <div class="grid">
+            {% for bag in bags %}
+                <div class="card">
+                    <a href="{% url 'bag-detail' bag.pk %}">
+                        {% if bag.main_image %}
+                            <img src="{{ bag.main_image.url }}" alt="{{ bag.name }}">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300x200?text=Нет+фото" alt="Нет фото">
+                        {% endif %}
+                        <h3>{{ bag.name }}</h3>
+                        <p>{{ bag.brand.name }}</p>
+                        <p>{{ bag.price }} ₽</p>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

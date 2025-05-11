@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern E-Shop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'shop/css/style.css' %}">
+
+</head>
+<div id="products-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+    {% for bag in bags %}
+        <div class="product-card bg-white rounded-lg overflow-hidden shadow-md relative" data-id="{{ bag.id }}">
+            <div class="relative">
+                <div class="slider-container relative w-full h-42 overflow-hidden" style="touch-action: pan-y;">
+                    <!-- Кнопка "В избранное" (теперь абсолютно позиционирована) -->
+                    <button 
+                        class="absolute top-2 right-2 z-10 p-2 bg-white/80 rounded-full backdrop-blur-sm hover:bg-white transition-all"
+                        id="favoriteBtn"
+                        data-bag-id="{{ bag.id }}"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path 
+                                stroke-linecap="round" 
+                                stroke-linejoin="round" 
+                                stroke-width="2" 
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            ></path>
+                        </svg>
+                    </button>
+                    <div class="slider-track flex transition-transform duration-300 ease-in-out ">
+                        <img src="{{ bag.main_image.url }}" class="w-full h-42 object-cover flex-shrink-0" alt="{{ bag.name }}">
+                        {% for image in bag.images.all %}
+                            <img src="{{ image.image.url }}" class="w-full h-42 object-cover flex-shrink-0" alt="{{ bag.name }}">
+                        {% endfor %}
+                    </div>                  
+                </div>
+            </div>
+
+                <div class="p-2">
+                    <div class="flex justify-between items-center mb-1">
+                        {% if bag.sale_price %}
+                            <div>
+                                <span class="text-red-600 font-bold text-lg">{{ bag.sale_price|floatformat:0 }}₽</span>
+                                <span class="line-through text-gray-500 text-sm ml-2">{{ bag.price|floatformat:0 }}₽</span>
+                            </div>
+                        {% else %}
+                            <span class="font-bold text-lg text-black">{{ bag.price|floatformat:0 }}₽</span>
+                        {% endif %}
+
+                    <!-- точки слайдера -->
+                    <div class="slider-dots flex gap-1">
+                        <span class="dot w-1 h-1 rounded-full opacity-50 border border-gray-300 bg-black cursor-pointer" data-index="0"></span>
+                        {% for image in bag.images.all %}
+                            <span class="dot w-1 h-1 bg-black rounded-full opacity-50 border border-gray-300 cursor-pointer" data-index="{{ forloop.counter }}"></span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <p class="text-gray-600 text-sm mb-1 line-clamp-2">{{ bag.brand }}</p>
+                <div class="flex justify-between items-center">
+                    <span class="font-medium text-md">{{ bag.name }}</span>
+                </div>
+            </div>
+
+            <!-- JSON-данные для модального окна -->
+            <script id="product-json-{{ bag.id }}" type="application/json">
+            {
+                "id": {{ bag.id }},
+                "name": "{{ bag.name|escapejs }}",
+                "brand": "{{ bag.brand.name|escapejs }}",
+                "article": "{{ bag.article|escapejs }}",
+                "price": "{{ bag.sale_price|default:bag.price }}",
+                "description": "{{ bag.description|escapejs }}",
+                "characteristics": "{{ bag.characteristics|escapejs }}",
+                "bag_type": "{{ bag.bag_type.name|escapejs }}",
+                "material": "{{ bag.material.name|escapejs }}",
+                "size": "{{ bag.size.name|escapejs }}",
+                "colors": [{% for color in bag.color.all %}"{{ color.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+                "image": "{{ bag.main_image.url }}",
+                "images": [{% for image in bag.images.all %}"{{ image.image.url }}"{% if not forloop.last %},{% endif %}{% endfor %}]
+            }
+            </script>
+        </div>
+    {% endfor %}
+</div>
+
+
+    
+
+
+
+
+<!-- МОДАЛЬНОЕ ОКНО -->
+<div id="quick-view-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="modal-overlay absolute inset-0 bg-black opacity-50"></div>
+    <div class="bg-white rounded-2xl shadow-2xl relative z-10 max-w-4xl w-full max-h-screen overflow-y-auto">
+        <button id="close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-black transition">
+            <i class="fas fa-times text-2xl"></i>
+        </button>
+
+        <div class="p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Изображения -->
+                <div>
+                    <img id="modal-image" src="" alt="Product" class="w-full rounded-xl">
+                    <div id="product-images-container" class="flex mt-4 space-x-2 overflow-x-auto"></div>
+                </div>
+
+                <!-- Информация -->
+                <div>
+                    <h2 id="modal-title" class="text-3xl font-bold text-gray-800 mb-2"></h2>
+                    <p id="modal-brand" class="text-sm text-gray-500 mb-1"></p>
+                    <p id="modal-article" class="text-sm text-gray-500 mb-4"></p>
+
+                    <!-- Кнопка для открытия блока -->
+                    <button id="toggle-characteristics" class="text-blue-600 text-sm mb-3 hover:underline">
+                        Показать характеристики
+                    </button>
+
+                    <!-- Характеристики и прочее (изначально скрыто) -->
+                    <div id="characteristics-section" class="hidden">
+                        <!-- Характеристики -->
+                        <div class="mb-4">
+                            <h3 class="text-md font-semibold text-gray-700 mb-1">Характеристики:</h3>
+                            <div id="modal-characteristics" class="text-sm text-gray-700 leading-relaxed"></div>
+                        </div>
+
+                        <!-- Прочее -->
+                        <div class="mb-4 space-y-1 text-sm text-gray-600">
+                            <p><span class="font-medium">Тип:</span> <span id="modal-bag-type"></span></p>
+                            <p><span class="font-medium">Материал:</span> <span id="modal-material"></span></p>
+                            <p><span class="font-medium">Размер:</span> <span id="modal-size"></span></p>
+                        </div>
+                    </div>
+
+
+                    <!-- Цена и описание -->
+                    <p id="modal-price" class="text-2xl font-extrabold text-black mb-4"></p>
+                    <p id="modal-description" class="text-gray-700 text-sm mb-6"></p>
+
+                    <!-- Цвет и количество -->
+                    <div class="flex items-end mb-6 space-x-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Цвет:</label>
+                            <select id="modal-color" class="border rounded-md px-3 py-2 w-32"></select>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <button id="add-to-cart-modal" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition mb-4 text-md font-semibold">
+                        Купить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="product-images-container" class="flex mb-4">
+    <!-- Изображения будут добавляться здесь -->
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Функция получения JSON по id товара
+    function getProductData(id) {
+        const script = document.getElementById(`product-json-${id}`);
+        if (!script) return null;
+        try {
+            return JSON.parse(script.textContent);
+        } catch (err) {
+            console.error("Ошибка парсинга JSON:", err);
+            return null;
+        }
+    }
+
+    // Элементы модального окна
+    const quickViewBtns = document.querySelectorAll('.product-card');
+    const modal = document.getElementById('quick-view-modal');
+    const closeModalBtn = document.getElementById('close-modal');
+
+    const modalTitle = document.getElementById('modal-title');
+    const modalBrand = document.getElementById('modal-brand');
+    const modalPrice = document.getElementById('modal-price');
+    const modalDescription = document.getElementById('modal-description');
+    const modalCharacteristics = document.getElementById('modal-characteristics');
+    const modalBagType = document.getElementById('modal-bag-type');
+    const modalMaterial = document.getElementById('modal-material');
+    const modalSize = document.getElementById('modal-size');
+    const modalArticle = document.getElementById('modal-article');
+    const modalImage = document.getElementById('modal-image');
+    const modalColorSelect = document.getElementById('modal-color');
+    const imagesContainer = document.getElementById('product-images-container');
+
+    // Закрытие модального окна
+    closeModalBtn.addEventListener('click', function () {
+        modal.classList.add('hidden');
+    });
+
+    // Обработка клика по кнопке быстрого просмотра
+    quickViewBtns.forEach(button => {
+        button.addEventListener('click', () => {
+            const product = getProductData(button.dataset.id);
+            if (!product) return;
+
+            modalTitle.textContent = product.name;
+            modalBrand.textContent = product.brand;
+            modalArticle.textContent = `Артикул: ${product.article}`;
+            modalBagType.textContent = product.bag_type;
+            modalMaterial.textContent = product.material;
+            modalSize.textContent = product.size;
+            modalDescription.textContent = product.description;
+            modalPrice.textContent = `₽${Math.round(parseFloat(product.price))}`;
+
+            // Характеристики с маркерами и переносами
+            const characteristics = product.characteristics
+                .replace(/\u002D/g, "• ")
+                .replace(/-/g, "• ")
+                .replace(/\r\n|\r|\n/g, "<br>");
+            modalCharacteristics.innerHTML = characteristics;
+
+            // Главное изображение
+            modalImage.src = product.image;
+
+            // Галерея изображений
+            imagesContainer.innerHTML = '';
+
+            // Вставляем главное изображение в начало, если его нет в списке изображений
+            const allImages = product.images.includes(product.image)
+                ? product.images
+                : [product.image, ...product.images];
+
+            allImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-16 h-16 mr-2 cursor-pointer';
+                img.addEventListener('click', () => {
+                    modalImage.src = url;
+                });
+                imagesContainer.appendChild(img);
+            });
+
+            // Цвета
+            modalColorSelect.innerHTML = '';
+            product.colors.forEach(color => {
+                const opt = document.createElement('option');
+                opt.value = color;
+                opt.textContent = color;
+                modalColorSelect.appendChild(opt);
+            });
+
+            // Показ модального окна
+            modal.classList.remove('hidden');
+        });
+    });
+
+
+    // слайдер у миниатюр
+    const sliders = document.querySelectorAll('.slider-container');
+
+sliders.forEach(slider => {
+    const track = slider.querySelector('.slider-track');
+    const images = track.querySelectorAll('img');
+    let currentIndex = 0;
+    const imageCount = images.length;
+
+    // Функция прокрутки
+    function updateSliderPosition() {
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+    }
+
+    // Свайп
+    let startX = 0;
+    let isSwiping = false;
+
+    slider.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+    });
+
+    slider.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        const moveX = e.touches[0].clientX;
+        const diff = startX - moveX;
+
+        if (Math.abs(diff) > 50) {
+            e.preventDefault();
+            if (diff > 0 && currentIndex < imageCount - 1) {
+                currentIndex++;
+            } else if (diff < 0 && currentIndex > 0) {
+                currentIndex--;
+            }
+            updateSliderPosition();
+            isSwiping = false; // Блокируем множественные свайпы за одно касание
+        }
+    }, { passive: false }); // ← важно!
+
+    slider.addEventListener('touchend', () => {
+        isSwiping = false;
+    });
+});
+document.querySelectorAll('.product-card').forEach((card) => {
+    const track = card.querySelector('.slider-track');
+    const dots = card.querySelectorAll('.dot');
+    const slides = track.querySelectorAll('img');
+    let currentIndex = 0;
+
+    function updateSlider() {
+    const offset = -currentIndex * 100;
+    track.style.transform = `translateX(${offset}%)`;
+
+    dots.forEach((dot, index) => {
+        // Сброс всех точек к исходному состоянию
+        if (index === 0) {
+            // Первая точка (особый стиль)
+            dot.classList.remove('bg-black', 'opacity-100');
+            dot.classList.add('bg-gray-300', 'bg-white', 'opacity-70');
+        } else {
+            // Остальные точки
+            dot.classList.remove('bg-black', 'opacity-100');
+            dot.classList.add('bg-gray-300', 'opacity-50');
+        }
+
+        // Подсветка активной точки
+        if (index === currentIndex) {
+            dot.classList.remove('bg-gray-300', 'bg-white', 'opacity-50', 'opacity-70');
+            dot.classList.add('bg-black', 'opacity-100');
+        }
+    });
+}
+
+    // Клик по точке
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            currentIndex = parseInt(dot.getAttribute('data-index'));
+            updateSlider();
+        });
+    });
+
+    // Свайп для мобильных
+    let startX = 0;
+    track.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+    });
+
+    track.addEventListener('touchend', (e) => {
+        let endX = e.changedTouches[0].clientX;
+        let deltaX = endX - startX;
+
+        if (deltaX > 50 && currentIndex > 0) currentIndex--;        // свайп вправо
+        else if (deltaX < -50 && currentIndex < slides.length - 1) currentIndex++;  // влево
+
+        updateSlider();
+    });
+
+    updateSlider(); // первая инициализация
+});
+
+// избранное (иконка сердечка) на фото
+const favoriteBtn = document.getElementById('favoriteBtn');
+  const heartIcon = document.getElementById('heartIcon');
+  let isFavorite = false;
+
+  document.querySelectorAll('#favoriteBtn').forEach((favoriteBtn) => {
+    favoriteBtn.addEventListener('click', (event) => {
+        event.stopPropagation();  // ⛔ Остановить всплытие
+
+        const heartIcon = favoriteBtn.querySelector('svg');
+        let isActive = heartIcon.classList.contains('fill-red-500');
+
+        if (isActive) {
+            heartIcon.classList.remove('text-red-500', 'stroke-red-500', 'fill-red-500');
+            heartIcon.classList.add('text-white', 'stroke-black');
+        } else {
+            heartIcon.classList.remove('text-white', 'stroke-black');
+            heartIcon.classList.add('text-red-500', 'stroke-red-500', 'fill-red-500');
+        }
+    });
+});
+
+document.getElementById('toggle-characteristics').addEventListener('click', function () {
+    const section = document.getElementById('characteristics-section');
+
+    if (section.classList.contains('hidden')) {
+        section.classList.remove('hidden');
+        this.textContent = 'Скрыть характеристики';
+    } else {
+        section.classList.add('hidden');
+        this.textContent = 'Показать характеристики';
+    }
+});
+
+
+});
+</script>
+
+    
+
+
+</body>
